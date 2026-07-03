@@ -18,10 +18,12 @@ class CreateAdminUser extends Command
         $email = 'admin@epf.sn'; // Tu pourras modifier l'email ici si tu veux
         
         // On vérifie si l'admin existe déjà pour éviter les doublons
+        // (important: idempotent pour les déploiements Render)
         if (User::where('email', $email)->exists()) {
-            $this->error('Un utilisateur avec cet email existe déjà !');
-            return Command::FAILURE;
+            $this->info('Un administrateur avec cet email existe déjà : aucun changement effectué.');
+            return Command::SUCCESS;
         }
+
 
         // Création de l'administrateur
         $admin = User::create([
