@@ -104,4 +104,10 @@ Route::middleware(['auth:sanctum', 'not_suspended', 'admin'])->prefix('admin')->
     Route::post('coupons', [AdminCouponController::class, 'store']);
     Route::put('coupons/{coupon}', [AdminCouponController::class, 'update']);
     Route::delete('coupons/{coupon}', [AdminCouponController::class, 'destroy']);
+
+    Route::get('categories', [\App\Http\Controllers\Api\Admin\AdminCategoryController::class, 'index']);
+    Route::post('categories', [\App\Http\Controllers\Api\Admin\AdminCategoryController::class, 'store']);
+    Route::put('categories/{id}', [\App\Http\Controllers\Api\Admin\AdminCategoryController::class, 'update']);
+    Route::delete('categories/{id}', [\App\Http\Controllers\Api\Admin\AdminCategoryController::class, 'destroy']);
 });
+

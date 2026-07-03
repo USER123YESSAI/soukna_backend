@@ -15,7 +15,11 @@ php artisan view:cache
 echo "🗄️ Running database migrations..."
 php artisan migrate --force
 
-# 3. Générer le compte admin AUTOMATIQUEMENT (Avant de lancer le serveur)
+# 3. S'assurer que les catégories par défaut existent
+echo "📂 Ensuring default categories exist..."
+php artisan categories:ensure
+
+# 4. Générer le compte admin AUTOMATIQUEMENT (Avant de lancer le serveur)
 echo "👤 Creating administrative account..."
 php artisan make:admin
 
