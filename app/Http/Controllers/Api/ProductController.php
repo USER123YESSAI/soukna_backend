@@ -126,9 +126,13 @@ class ProductController extends Controller
         ]);
 
         $mainPath = $request->file('image')->store('products', 'public');
+        \Log::info('Product image stored', ['path' => $mainPath, 'url' => PublicStorage::url($mainPath)]);
+        
         $extra = [];
         foreach ($request->file('images', []) as $file) {
-            $extra[] = $file->store('products', 'public');
+            $path = $file->store('products', 'public');
+            $extra[] = $path;
+            \Log::info('Product extra image stored', ['path' => $path, 'url' => PublicStorage::url($path)]);
         }
 
         $product = $request->user()->products()->create([
@@ -146,6 +150,8 @@ class ProductController extends Controller
         ]);
 
         $product->load(['category:id,name,slug', 'seller:id,name']);
+
+        \Log::info('Product created', ['product_id' => $product->id, 'image' => $product->image]);
 
         return response()->json([
             'product' => $this->sellerProductPayload($product),
@@ -286,6 +292,14 @@ class ProductController extends Controller
      */
     private function publicListItem(Product $product): array
     {
+        $imageUrl = PublicStorage::url($product->image);
+        \Log::info('Product list item image', [
+            'product_id' => $product->id,
+            'image_path' => $product->image,
+            'image_url' => $imageUrl,
+            'app_url' => config('app.url'),
+        ]);
+
         return [
             'id' => $product->id,
             'title' => $product->title,
@@ -296,7 +310,7 @@ class ProductController extends Controller
             'sale_ends_at' => $product->sale_ends_at?->toIso8601String(),
             'quantity' => $product->quantity,
             'category' => $product->category ? $product->category->name : null,
-            'image' => PublicStorage::url($product->image),
+            'image' => $imageUrl,
             'rating' => $product->rating,
             'sales_count' => $product->sales_count,
             'seller' => $product->seller ? [

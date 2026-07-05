@@ -15,7 +15,11 @@ php artisan view:cache
 echo "🗄️ Running database migrations..."
 php artisan migrate --force
 
-# 3. S'assurer que les catégories par défaut existent
+# 3. Créer le lien symbolique storage (nécessaire pour les images)
+echo "🔗 Creating storage symbolic link..."
+php artisan storage:link
+
+# 4. S'assurer que les catégories par défaut existent
 echo "📂 Ensuring default categories exist..."
 php artisan categories:ensure
 
