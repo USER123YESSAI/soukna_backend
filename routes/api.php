@@ -57,10 +57,9 @@ Route::middleware(['auth:sanctum', 'not_suspended'])->group(function (): void {
 
     Route::middleware('seller')->group(function (): void {
         Route::post('products', [ProductController::class, 'store']);
+        Route::put('products/{product}', [ProductController::class, 'update']);
+        Route::delete('products/{product}', [ProductController::class, 'destroy']);
     });
-
-    Route::put('products/{product}', [ProductController::class, 'update']);
-    Route::delete('products/{product}', [ProductController::class, 'destroy']);
 
     Route::delete('reviews/{review}', [ReviewController::class, 'destroy']);
 
@@ -76,9 +75,11 @@ Route::middleware(['auth:sanctum', 'not_suspended'])->group(function (): void {
     Route::put('orders/{order}/status', [OrderController::class, 'updateStatus']);
     Route::post('orders/{order}/cancel', [OrderController::class, 'cancel']);
 
-    Route::get('seller/orders', [OrderController::class, 'sellerOrders']);
-    Route::get('seller/dashboard', [SellerDashboardController::class, 'dashboard']);
-    Route::get('seller/statistics', [SellerDashboardController::class, 'statistics']);
+    Route::middleware('seller')->group(function (): void {
+        Route::get('seller/orders', [OrderController::class, 'sellerOrders']);
+        Route::get('seller/dashboard', [SellerDashboardController::class, 'dashboard']);
+        Route::get('seller/statistics', [SellerDashboardController::class, 'statistics']);
+    });
 
     Route::post('favorites/add', [FavoriteController::class, 'add']);
     Route::delete('favorites/{product_id}', [FavoriteController::class, 'remove']);

@@ -85,10 +85,13 @@ class ProductController extends Controller
         ]);
     }
 
-    public function show(Product $product): JsonResponse
+    public function show(Request $request, Product $product): JsonResponse
     {
+        $user = $request->user('sanctum');
         if ($product->status !== 'published') {
-            abort(404);
+            if (!$user || $user->id !== $product->user_id) {
+                abort(404);
+            }
         }
 
         $product->increment('views');
