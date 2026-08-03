@@ -23,6 +23,11 @@ final class PublicStorage
             return null;
         }
 
+        // Si l'image est une URL complète (ex: Cloudinary, S3, Unsplash), on la retourne directement
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
         // Fallback: si le fichier n'existe pas, utiliser un fichier réel existant
         if (!Storage::disk('public')->exists($path)) {
             Log::warning('PublicStorage: file does not exist, trying fallback', ['path' => $path]);

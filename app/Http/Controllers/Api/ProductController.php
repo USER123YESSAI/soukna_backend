@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Review;
 use App\Support\PublicStorage;
+use App\Support\CloudStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -128,12 +129,12 @@ class ProductController extends Controller
             'sale_ends_at' => ['nullable', 'date', 'after_or_equal:sale_starts_at'],
         ]);
 
-        $mainPath = $request->file('image')->store('products', 'public');
+        $mainPath = CloudStorage::storeImage($request->file('image'), 'products');
         \Log::info('Product image stored', ['path' => $mainPath, 'url' => PublicStorage::url($mainPath)]);
         
         $extra = [];
         foreach ($request->file('images', []) as $file) {
-            $path = $file->store('products', 'public');
+            $path = CloudStorage::storeImage($file, 'products');
             $extra[] = $path;
             \Log::info('Product extra image stored', ['path' => $path, 'url' => PublicStorage::url($path)]);
         }
@@ -190,14 +191,14 @@ class ProductController extends Controller
 
         if ($request->hasFile('image')) {
             $this->deleteProductImages($product);
-            $product->image = $request->file('image')->store('products', 'public');
+            $product->image = CloudStorage::storeImage($request->file('image'), 'products');
             $product->images = [];
         }
 
         if ($request->hasFile('images')) {
             $current = $product->images ?? [];
             foreach ($request->file('images') as $file) {
-                $current[] = $file->store('products', 'public');
+                $current[] = CloudStorage::storeImage($file, 'products');
             }
             $product->images = $current;
         }
@@ -282,11 +283,13 @@ class ProductController extends Controller
 
     private function deleteProductImages(Product $product): void
     {
-        if ($product->image) {
+        if ($product->image && !str_starts_with($product->image, 'http://') && !str_starts_with($product->image, 'https://')) {
             Storage::disk('public')->delete($product->image);
         }
         foreach ($product->images ?? [] as $path) {
-            Storage::disk('public')->delete($path);
+            if (!str_starts_with($path, 'http://') && !str_starts_with($path, 'https://')) {
+                Storage::disk('public')->delete($path);
+            }
         }
     }
 

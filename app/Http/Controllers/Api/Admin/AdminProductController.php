@@ -31,11 +31,13 @@ class AdminProductController extends Controller
     {
         $product = Product::query()->withTrashed()->findOrFail($id);
 
-        if ($product->image) {
+        if ($product->image && !str_starts_with($product->image, 'http://') && !str_starts_with($product->image, 'https://')) {
             Storage::disk('public')->delete($product->image);
         }
         foreach ($product->images ?? [] as $path) {
-            Storage::disk('public')->delete($path);
+            if (!str_starts_with($path, 'http://') && !str_starts_with($path, 'https://')) {
+                Storage::disk('public')->delete($path);
+            }
         }
 
         $product->forceDelete();
