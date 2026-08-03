@@ -8,9 +8,12 @@ use Illuminate\Support\Facades\Log;
 final class PublicStorage
 {
     private static array $fallbackMapping = [
-        'demo-lampe-design.jpg' => '0CKYhJtQlgVD60BawdAnyqggYIyO2RxxlMQwTRpc.jpg',
-        'demo-casque-audio.jpg' => '3Uxmnk3ihRiJ9tKF37v6v39oqiz8uGeKQAbYuytr.jpg',
-        'demo-t-shirt-bio.jpg' => 'AMCzEE9clfz2vo8HArJOMohCeigDXLtwmVWWhPv5.png',
+        'products/demo-lampe-design.jpg' => 'products/0CKYhJtQlgVD60BawdAnyqggYIyO2RxxlMQwTRpc.jpg',
+        'products/demo-casque-audio.jpg' => 'products/3Uxmnk3ihRiJ9tKF37v6v39oqiz8uGeKQAbYuytr.jpg',
+        'products/demo-t-shirt-bio.jpg' => 'products/AMCzEE9clfz2vo8HArJOMohCeigDXLtwmVWWhPv5.png',
+        'demo-lampe-design.jpg' => 'products/0CKYhJtQlgVD60BawdAnyqggYIyO2RxxlMQwTRpc.jpg',
+        'demo-casque-audio.jpg' => 'products/3Uxmnk3ihRiJ9tKF37v6v39oqiz8uGeKQAbYuytr.jpg',
+        'demo-t-shirt-bio.jpg' => 'products/AMCzEE9clfz2vo8HArJOMohCeigDXLtwmVWWhPv5.png',
     ];
 
     public static function url(?string $path): ?string

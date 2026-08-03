@@ -78,7 +78,7 @@ class User extends Authenticatable
             ->where('product_id', $productId)
             ->whereHas('order', function ($q): void {
                 $q->where('user_id', $this->id)
-                    ->where('status', 'delivered');
+                    ->whereNotIn('status', ['cancelled']);
             })
             ->exists();
     }

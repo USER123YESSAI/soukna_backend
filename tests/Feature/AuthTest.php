@@ -74,8 +74,10 @@ test('authenticated user can get profile', function () {
 
     $response->assertStatus(200)
         ->assertJson([
-            'id' => $this->user->id,
-            'email' => 'test@example.com',
+            'user' => [
+                'id' => $this->user->id,
+                'email' => 'test@example.com',
+            ],
         ]);
 });
 

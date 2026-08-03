@@ -72,7 +72,7 @@ test('vendeur crée un produit avec image', function (): void {
     $cat = Category::factory()->create();
     Sanctum::actingAs($seller);
 
-    $image = UploadedFile::fake()->image('p.jpg', 600, 600);
+    $image = UploadedFile::fake()->create('p.jpg', 100, 'image/jpeg');
 
     $this->post('/api/products', [
         'title' => 'Article',
@@ -97,7 +97,7 @@ test('acheteur ne peut pas créer de produit', function (): void {
         'description' => 'Y',
         'price' => 1,
         'category_id' => $cat->id,
-        'image' => UploadedFile::fake()->image('x.jpg'),
+        'image' => UploadedFile::fake()->create('x.jpg', 100, 'image/jpeg'),
     ])->assertForbidden();
 });
 

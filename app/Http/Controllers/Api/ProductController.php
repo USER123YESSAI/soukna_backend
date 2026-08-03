@@ -315,6 +315,7 @@ class ProductController extends Controller
             'category' => $product->category ? $product->category->name : null,
             'image' => $imageUrl,
             'rating' => $product->rating,
+            'total_reviews' => $product->total_reviews ?? 0,
             'sales_count' => $product->sales_count,
             'seller' => $product->seller ? [
                 'id' => $product->seller->id,

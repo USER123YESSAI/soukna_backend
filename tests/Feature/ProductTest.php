@@ -17,7 +17,8 @@ beforeEach(function () {
 test('seller can create product', function () {
     Storage::fake('public');
 
-    $file = UploadedFile::fake()->image('product.jpg');
+    $category = \App\Models\Category::factory()->create();
+    $file = UploadedFile::fake()->create('product.jpg', 100, 'image/jpeg');
 
     $response = $this->actingAs($this->seller)
         ->postJson('/api/products', [
@@ -25,19 +26,19 @@ test('seller can create product', function () {
             'description' => 'Test Description',
             'price' => 99.99,
             'quantity' => 10,
-            'category_id' => 1,
+            'category_id' => $category->id,
             'status' => 'published',
             'image' => $file,
         ]);
 
     $response->assertStatus(201)
         ->assertJsonStructure([
-            'id', 'title', 'description', 'price', 'quantity',
+            'product' => ['id', 'title', 'description', 'price', 'quantity'],
         ]);
 
     $this->assertDatabaseHas('products', [
         'title' => 'Test Product',
-        'seller_id' => $this->seller->id,
+        'user_id' => $this->seller->id,
     ]);
 });
 
@@ -56,7 +57,7 @@ test('buyer cannot create product', function () {
 
 test('anyone can view public products', function () {
     Product::factory()->create([
-        'seller_id' => $this->seller->id,
+        'user_id' => $this->seller->id,
         'status' => 'published',
     ]);
 
@@ -72,7 +73,7 @@ test('anyone can view public products', function () {
 
 test('seller can update their own product', function () {
     $product = Product::factory()->create([
-        'seller_id' => $this->seller->id,
+        'user_id' => $this->seller->id,
         'status' => 'published',
     ]);
 
@@ -97,7 +98,7 @@ test('seller can update their own product', function () {
 test('seller cannot update other seller product', function () {
     $otherSeller = User::factory()->create(['role' => 'seller']);
     $product = Product::factory()->create([
-        'seller_id' => $otherSeller->id,
+        'user_id' => $otherSeller->id,
         'status' => 'published',
     ]);
 
@@ -112,7 +113,7 @@ test('seller cannot update other seller product', function () {
 
 test('seller can delete their own product', function () {
     $product = Product::factory()->create([
-        'seller_id' => $this->seller->id,
+        'user_id' => $this->seller->id,
         'status' => 'published',
     ]);
 
@@ -121,7 +122,7 @@ test('seller can delete their own product', function () {
 
     $response->assertStatus(200);
 
-    $this->assertDatabaseMissing('products', [
+    $this->assertSoftDeleted('products', [
         'id' => $product->id,
     ]);
 });

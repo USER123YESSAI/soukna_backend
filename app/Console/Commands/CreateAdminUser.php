@@ -15,10 +15,9 @@ class CreateAdminUser extends Command
 
     public function handle()
     {
-        $email = 'admin@epf.sn'; // Tu pourras modifier l'email ici si tu veux
+        $email = 'admin@epf.sn'; 
         
-        // On vérifie si l'admin existe déjà pour éviter les doublons
-        // (important: idempotent pour les déploiements Render)
+    
         if (User::where('email', $email)->exists()) {
             $this->info('Un administrateur avec cet email existe déjà : aucun changement effectué.');
             return Command::SUCCESS;
@@ -29,8 +28,8 @@ class CreateAdminUser extends Command
         $admin = User::create([
             'name' => 'Administrateur EPF',
             'email' => $email,
-            'password' => Hash::make('AdminEpf2026!'), // Change ce mot de passe par sécurité
-            'role' => 'admin', // Assure-toi que ta table users possède bien une colonne role (ou un attribut similaire)
+            'password' => Hash::make('AdminEpf2026!'), 
+            'role' => 'admin', 
             'bio' => 'Compte administrateur principal du Marketplace.',
         ]);
 
