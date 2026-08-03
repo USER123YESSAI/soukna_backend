@@ -23,6 +23,17 @@ final class PublicStorage
             return null;
         }
 
+        // Correction automatique des liens de pages HTML ImgBB vers leurs URLs d'images directes
+        $ibbMapping = [
+            'https://ibb.co/Nd70kZY1' => 'https://i.ibb.co/sdtTDy35/habit-homme.png',
+            'https://ibb.co/VcnxGyzR' => 'https://i.ibb.co/FLZX1vy2/chaussure-femme.png',
+            'https://ibb.co/W4v51Vsw' => 'https://i.ibb.co/nNMmSPRv/chaussure-homme.png',
+            'https://ibb.co/Zp4RJ9TQ' => 'https://i.ibb.co/pBV6PqXH/iphone17.png',
+        ];
+        if (isset($ibbMapping[$path])) {
+            return $ibbMapping[$path];
+        }
+
         // Si l'image est une URL complète (ex: Cloudinary, S3, Unsplash), on la retourne directement
         if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
             return $path;
