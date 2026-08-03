@@ -120,7 +120,8 @@ class ProductController extends Controller
             'price' => ['required', 'numeric', 'min:0'],
             'quantity' => ['sometimes', 'integer', 'min:0'],
             'category_id' => ['required', 'integer', 'exists:categories,id'],
-            'image' => ['required', 'file', 'image', 'max:4096', 'mimes:jpeg,png,jpg,webp,gif'],
+            'image' => ['nullable', 'file', 'image', 'max:4096', 'mimes:jpeg,png,jpg,webp,gif'],
+            'image_url' => ['nullable', 'string', 'max:1000'],
             'images' => ['nullable', 'array', 'max:10'],
             'images.*' => ['file', 'image', 'max:4096', 'mimes:jpeg,png,jpg,webp,gif'],
             'status' => ['nullable', 'string', Rule::in(['draft', 'published'])],
@@ -129,7 +130,17 @@ class ProductController extends Controller
             'sale_ends_at' => ['nullable', 'date', 'after_or_equal:sale_starts_at'],
         ]);
 
-        $mainPath = CloudStorage::storeImage($request->file('image'), 'products');
+        $mainPath = null;
+        if ($request->filled('image_url')) {
+            $mainPath = $request->input('image_url');
+        } elseif ($request->hasFile('image')) {
+            $mainPath = CloudStorage::storeImage($request->file('image'), 'products');
+        }
+
+        if (!$mainPath) {
+            return response()->json(['message' => 'Veuillez fournir un fichier image ou une URL d\'image.'], 422);
+        }
+
         \Log::info('Product image stored', ['path' => $mainPath, 'url' => PublicStorage::url($mainPath)]);
         
         $extra = [];
@@ -176,6 +187,7 @@ class ProductController extends Controller
             'quantity' => ['sometimes', 'integer', 'min:0'],
             'category_id' => ['sometimes', 'integer', 'exists:categories,id'],
             'image' => ['sometimes', 'file', 'image', 'max:4096', 'mimes:jpeg,png,jpg,webp,gif'],
+            'image_url' => ['nullable', 'string', 'max:1000'],
             'images' => ['nullable', 'array', 'max:10'],
             'images.*' => ['file', 'image', 'max:4096', 'mimes:jpeg,png,jpg,webp,gif'],
             'status' => ['sometimes', 'string', Rule::in(['draft', 'published', 'sold', 'inactive'])],
@@ -189,7 +201,11 @@ class ProductController extends Controller
             abort(422, __('Le prix promo doit être inférieur au prix normal.'));
         }
 
-        if ($request->hasFile('image')) {
+        if ($request->filled('image_url')) {
+            $this->deleteProductImages($product);
+            $product->image = $request->input('image_url');
+            $product->images = [];
+        } elseif ($request->hasFile('image')) {
             $this->deleteProductImages($product);
             $product->image = CloudStorage::storeImage($request->file('image'), 'products');
             $product->images = [];
