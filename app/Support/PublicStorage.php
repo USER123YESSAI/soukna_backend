@@ -39,6 +39,12 @@ final class PublicStorage
             return $path;
         }
 
+        // Check MinIO / S3 first
+        $minioConfigured = !empty(env('AWS_ENDPOINT')) || !empty(env('AWS_BUCKET'));
+        if ($minioConfigured && Storage::disk('s3')->exists($path)) {
+            return Storage::disk('s3')->url($path);
+        }
+
         // Fallback: si le fichier n'existe pas, utiliser un fichier réel existant
         if (!Storage::disk('public')->exists($path)) {
             Log::warning('PublicStorage: file does not exist, trying fallback', ['path' => $path]);
