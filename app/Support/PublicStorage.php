@@ -39,35 +39,23 @@ final class PublicStorage
             return $path;
         }
 
-        // Check MinIO / S3 first
-        $minioConfigured = !empty(env('AWS_ENDPOINT')) || !empty(env('AWS_BUCKET'));
-        if ($minioConfigured && Storage::disk('s3')->exists($path)) {
-            return Storage::disk('s3')->url($path);
+        // Fallback rapide pour les noms de démo
+        if (isset(self::$fallbackMapping[$path])) {
+            $path = self::$fallbackMapping[$path];
         }
 
-        // Fallback: si le fichier n'existe pas, utiliser un fichier réel existant
-        if (!Storage::disk('public')->exists($path)) {
-            Log::warning('PublicStorage: file does not exist, trying fallback', ['path' => $path]);
-            
-            if (isset(self::$fallbackMapping[$path])) {
-                $fallbackPath = self::$fallbackMapping[$path];
-                if (Storage::disk('public')->exists($fallbackPath)) {
-                    Log::info('PublicStorage: using fallback file', ['original' => $path, 'fallback' => $fallbackPath]);
-                    $path = $fallbackPath;
+        // Check MinIO / S3 if configured
+        $minioConfigured = !empty(env('AWS_ENDPOINT')) || !empty(env('AWS_BUCKET'));
+        if ($minioConfigured) {
+            try {
+                if (Storage::disk('s3')->exists($path)) {
+                    return Storage::disk('s3')->url($path);
                 }
+            } catch (\Throwable) {
+                // Fallback silencieux vers le stockage public
             }
         }
 
-        $url = Storage::disk('public')->url($path);
-        
-        Log::info('PublicStorage URL generated', [
-            'path' => $path,
-            'url' => $url,
-            'disk' => 'public',
-            'app_url' => config('app.url'),
-            'asset_url' => config('app.asset_url'),
-        ]);
-
-        return $url;
+        return Storage::disk('public')->url($path);
     }
 }
