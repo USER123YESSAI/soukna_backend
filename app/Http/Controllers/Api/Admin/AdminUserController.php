@@ -71,4 +71,38 @@ class AdminUserController extends Controller
             'message' => __('Compte réactivé.'),
         ]);
     }
+
+    public function exportUsers(Request $request)
+    {
+        $users = User::query()->orderByDesc('id')->get();
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="utilisateurs_' . date('Y-m-d_His') . '.csv"',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $callback = function () use ($users) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM
+            fputcsv($handle, ['ID', 'Nom', 'Email', 'Rôle', 'Statut', 'Date Inscription'], ';');
+
+            foreach ($users as $user) {
+                fputcsv($handle, [
+                    $user->id,
+                    $user->name,
+                    $user->email,
+                    $user->role,
+                    $user->suspended_at ? 'Suspendu' : 'Actif',
+                    $user->created_at?->format('d/m/Y H:i') ?? '',
+                ], ';');
+            }
+
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }

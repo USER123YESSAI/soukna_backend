@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'discount_amount',
     'shipping_cost',
     'status',
+    'payment_method',
+    'payment_status',
     'shipping_address',
     'shipping_city',
     'shipping_postal_code',

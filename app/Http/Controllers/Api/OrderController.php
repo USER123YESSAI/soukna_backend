@@ -26,6 +26,7 @@ class OrderController extends Controller
             'shipping_phone' => ['required', 'string', 'max:32'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'coupon_code' => ['nullable', 'string', 'max:40'],
+            'payment_method' => ['nullable', 'string', 'max:50'],
         ]);
 
         $user = $request->user();
@@ -49,6 +50,9 @@ class OrderController extends Controller
 
             $orderNumber = $this->uniqueOrderNumber();
 
+            $payMethod = $data['payment_method'] ?? 'cod';
+            $payStatus = in_array($payMethod, ['card', 'paypal', 'mobile_pay'], true) ? 'paid' : 'pending';
+
             $order = Order::query()->create([
                 'user_id' => $user->id,
                 'order_number' => $orderNumber,
@@ -56,6 +60,8 @@ class OrderController extends Controller
                 'discount_amount' => 0,
                 'shipping_cost' => 0,
                 'status' => 'pending',
+                'payment_method' => $payMethod,
+                'payment_status' => $payStatus,
                 'shipping_address' => $data['shipping_address'],
                 'shipping_city' => $data['shipping_city'],
                 'shipping_postal_code' => $data['shipping_postal_code'],
@@ -109,8 +115,24 @@ class OrderController extends Controller
 
             $user->cartItems()->delete();
 
-            return $order->fresh(['items.product', 'items.seller', 'coupon:id,code']);
+            return $order->fresh(['items.product', 'items.seller', 'coupon:id,code', 'buyer']);
         });
+
+        // Notifications email automatiques (Acheteur + Vendeurs)
+        try {
+            if ($order->buyer?->email) {
+                \Illuminate\Support\Facades\Mail::to($order->buyer->email)->send(new \App\Mail\OrderConfirmationMail($order));
+            }
+            $sellersNotified = [];
+            foreach ($order->items as $item) {
+                if ($item->seller && !in_array($item->seller->id, $sellersNotified, true) && $item->seller->email) {
+                    $sellersNotified[] = $item->seller->id;
+                    \Illuminate\Support\Facades\Mail::to($item->seller->email)->send(new \App\Mail\NewOrderSellerMail($order, $item->seller));
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Order email notifications error: ' . $e->getMessage());
+        }
 
         return response()->json([
             'order' => $this->orderDetailPayload($order),
@@ -146,6 +168,8 @@ class OrderController extends Controller
             'order_number' => $o->order_number,
             'total_amount' => $o->total_amount,
             'discount_amount' => $o->discount_amount,
+            'payment_method' => $o->payment_method,
+            'payment_status' => $o->payment_status,
             'status' => $o->status,
             'item_count' => $o->items_count,
             'items' => $o->items->map(fn ($item) => [
@@ -214,6 +238,8 @@ class OrderController extends Controller
                     'status' => $i->status,
                 ]),
                 'total_amount' => number_format($total, 2, '.', ''),
+                'payment_method' => $order->payment_method,
+                'payment_status' => $order->payment_status,
                 'status' => $order->status,
                 'created_at' => $order->created_at?->toIso8601String(),
             ];
@@ -273,7 +299,16 @@ class OrderController extends Controller
             OrderStatusService::syncOrderFromItems($order);
         }
 
-        $order->refresh()->load(['items.product', 'items.seller']);
+        $order->refresh()->load(['items.product', 'items.seller', 'buyer']);
+
+        // Notification client du changement de statut
+        try {
+            if ($order->buyer?->email && in_array($newStatus, ['confirmed', 'shipped', 'delivered', 'cancelled'], true)) {
+                \Illuminate\Support\Facades\Mail::to($order->buyer->email)->send(new \App\Mail\OrderStatusUpdatedMail($order, $newStatus));
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('OrderStatusUpdatedMail error: ' . $e->getMessage());
+        }
 
         return response()->json([
             'order' => $this->orderDetailPayload($order),
@@ -360,6 +395,8 @@ class OrderController extends Controller
                 ? ['code' => $order->coupon->code]
                 : null,
             'shipping_cost' => $order->shipping_cost,
+            'payment_method' => $order->payment_method,
+            'payment_status' => $order->payment_status,
             'status' => $order->status,
             'shipping_address' => $order->shipping_address,
             'shipping_city' => $order->shipping_city,
@@ -385,5 +422,64 @@ class OrderController extends Controller
             'shipped_at' => $order->shipped_at?->toIso8601String(),
             'delivered_at' => $order->delivered_at?->toIso8601String(),
         ];
+    }
+
+    public function invoice(Request $request, Order $order)
+    {
+        $this->authorizeOrderAccess($request->user(), $order);
+        $order->loadMissing(['items.product', 'items.seller', 'buyer']);
+        return view('invoices.invoice', compact('order'));
+    }
+
+    public function exportSellerOrders(Request $request)
+    {
+        if (! in_array($request->user()->role, ['seller', 'admin'], true)) {
+            abort(403);
+        }
+
+        $sellerId = $request->user()->id;
+        $orders = Order::query()
+            ->whereHas('items', fn ($q) => $q->where('seller_id', $sellerId))
+            ->with([
+                'buyer:id,name,email,phone',
+                'items' => fn ($q) => $q->where('seller_id', $sellerId)->with('product:id,title'),
+            ])
+            ->orderByDesc('id')
+            ->get();
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="commandes_vendeur_' . date('Y-m-d_His') . '.csv"',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $callback = function () use ($orders, $sellerId) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM for Excel
+            fputcsv($handle, ['N° Commande', 'Date', 'Client', 'Articles', 'Statut', 'Paiement', 'Statut Paiement', 'Montant Vendeur (FCFA)'], ';');
+
+            foreach ($orders as $order) {
+                $sellerItems = $order->items->filter(fn ($i) => (int)$i->seller_id === (int)$sellerId);
+                $sellerTotal = $sellerItems->sum('subtotal');
+                $articlesStr = $sellerItems->map(fn ($i) => ($i->product?->title ?? 'Produit') . ' (x' . $i->quantity . ')')->join(', ');
+
+                fputcsv($handle, [
+                    $order->order_number,
+                    $order->created_at?->format('d/m/Y H:i') ?? '',
+                    $order->buyer?->name ?? 'Client inconnu',
+                    $articlesStr,
+                    $order->status,
+                    $order->payment_method ?? 'N/A',
+                    $order->payment_status ?? 'pending',
+                    number_format($sellerTotal, 2, ',', ' '),
+                ], ';');
+            }
+
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

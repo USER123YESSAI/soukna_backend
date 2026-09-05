@@ -318,3 +318,51 @@ test('commande avec coupon et stats admin', function (): void {
         'total_revenue',
     ]);
 });
+
+test('facture et export csv commandes et utilisateurs', function (): void {
+    $seller = User::factory()->create(['role' => 'seller']);
+    $buyer = User::factory()->create(['role' => 'buyer']);
+    $admin = User::factory()->create(['role' => 'admin']);
+    $cat = Category::factory()->create();
+    $product = Product::factory()->create([
+        'user_id' => $seller->id,
+        'category_id' => $cat->id,
+        'quantity' => 5,
+        'price' => 50,
+        'status' => 'published',
+    ]);
+
+    Sanctum::actingAs($buyer);
+    $this->postJson('/api/cart/add', ['product_id' => $product->id, 'quantity' => 1])->assertCreated();
+    $orderRes = $this->postJson('/api/orders', [
+        'shipping_address' => 'Avenue Cheikh Anta Diop',
+        'shipping_city' => 'Dakar',
+        'shipping_postal_code' => '10000',
+        'shipping_phone' => '+221770000000',
+        'payment_method' => 'cod',
+    ])->assertCreated();
+
+    $orderId = $orderRes->json('order.id');
+    expect($orderRes->json('order.payment_method'))->toBe('cod');
+    expect($orderRes->json('order.payment_status'))->toBe('pending');
+
+    // Facture HTML
+    $this->get('/api/orders/'.$orderId.'/invoice')->assertOk()->assertSee('FACTURE');
+
+    // Export CSV Vendeur
+    Sanctum::actingAs($seller);
+    $this->get('/api/seller/orders/export-csv')
+        ->assertOk()
+        ->assertHeader('content-type', 'text/csv; charset=UTF-8');
+
+    // Export CSV Admin
+    Sanctum::actingAs($admin);
+    $this->get('/api/admin/orders/export-csv')
+        ->assertOk()
+        ->assertHeader('content-type', 'text/csv; charset=UTF-8');
+
+    $this->get('/api/admin/users/export-csv')
+        ->assertOk()
+        ->assertHeader('content-type', 'text/csv; charset=UTF-8');
+});
+

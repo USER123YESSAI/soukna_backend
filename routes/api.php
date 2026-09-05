@@ -72,11 +72,13 @@ Route::middleware(['auth:sanctum', 'not_suspended'])->group(function (): void {
     Route::post('orders', [OrderController::class, 'store']);
     Route::get('orders/my-orders', [OrderController::class, 'myOrders']);
     Route::get('orders/{order}', [OrderController::class, 'show']);
+    Route::get('orders/{order}/invoice', [OrderController::class, 'invoice']);
     Route::put('orders/{order}/status', [OrderController::class, 'updateStatus']);
     Route::post('orders/{order}/cancel', [OrderController::class, 'cancel']);
 
     Route::middleware('seller')->group(function (): void {
         Route::get('seller/orders', [OrderController::class, 'sellerOrders']);
+        Route::get('seller/orders/export-csv', [OrderController::class, 'exportSellerOrders']);
         Route::get('seller/dashboard', [SellerDashboardController::class, 'dashboard']);
         Route::get('seller/statistics', [SellerDashboardController::class, 'statistics']);
     });
@@ -93,8 +95,10 @@ Route::middleware(['auth:sanctum', 'not_suspended'])->group(function (): void {
 
 Route::middleware(['auth:sanctum', 'not_suspended', 'admin'])->prefix('admin')->group(function (): void {
     Route::get('stats', [AdminDashboardController::class, 'stats']);
+    Route::get('orders/export-csv', [AdminDashboardController::class, 'exportOrders']);
 
     Route::get('users', [AdminUserController::class, 'index']);
+    Route::get('users/export-csv', [AdminUserController::class, 'exportUsers']);
     Route::post('users/{user}/suspend', [AdminUserController::class, 'suspend']);
     Route::post('users/{user}/activate', [AdminUserController::class, 'activate']);
 
