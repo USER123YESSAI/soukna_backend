@@ -15,27 +15,66 @@ class CreateAdminUser extends Command
 
     public function handle()
     {
-        $email = 'admin@epf.sn'; 
-        
-    
-        if (User::where('email', $email)->exists()) {
-            $this->info('Un administrateur avec cet email existe déjà : aucun changement effectué.');
-            return Command::SUCCESS;
+        $defaultUsers = [
+            [
+                'name' => 'Administrateur EPF',
+                'email' => 'admin@epf.sn',
+                'password' => Hash::make('AdminEpf2026!'),
+                'role' => 'admin',
+                'bio' => 'Compte administrateur principal du Marketplace.',
+            ],
+            [
+                'name' => 'Vendeur EPF',
+                'email' => 'vendeur@epf.sn',
+                'password' => Hash::make('VendeurEpf2026!'),
+                'role' => 'seller',
+                'bio' => 'Boutique officielle Vendeur EPF.',
+                'city' => 'Dakar',
+                'phone' => '+221770000000',
+            ],
+            [
+                'name' => 'Acheteur EPF',
+                'email' => 'acheteur@epf.sn',
+                'password' => Hash::make('AcheteurEpf2026!'),
+                'role' => 'buyer',
+                'bio' => 'Client officiel EPF.',
+                'city' => 'Dakar',
+                'phone' => '+221780000000',
+            ],
+            [
+                'name' => 'Seller Demo',
+                'email' => 'seller@example.com',
+                'password' => Hash::make('secret12'),
+                'role' => 'seller',
+                'bio' => 'Boutique de démonstration.',
+            ],
+            [
+                'name' => 'Buyer Demo',
+                'email' => 'buyer@example.com',
+                'password' => Hash::make('secret12'),
+                'role' => 'buyer',
+                'bio' => 'Client démo.',
+            ],
+        ];
+
+        foreach ($defaultUsers as $userData) {
+            $user = User::where('email', $userData['email'])->first();
+            if ($user) {
+                $user->update([
+                    'name' => $userData['name'],
+                    'role' => $userData['role'],
+                    'password' => $userData['password'],
+                    'bio' => $userData['bio'] ?? $user->bio,
+                    'city' => $userData['city'] ?? $user->city,
+                    'phone' => $userData['phone'] ?? $user->phone,
+                ]);
+                $this->info("Compte mis à jour : {$userData['email']} ({$userData['role']})");
+            } else {
+                User::create($userData);
+                $this->info("Compte créé avec succès : {$userData['email']} ({$userData['role']})");
+            }
         }
 
-
-        // Création de l'administrateur
-        $admin = User::create([
-            'name' => 'Administrateur EPF',
-            'email' => $email,
-            'password' => Hash::make('AdminEpf2026!'), 
-            'role' => 'admin', 
-            'bio' => 'Compte administrateur principal du Marketplace.',
-        ]);
-
-        $this->info('Compte administrateur créé avec succès !');
-        $this->info('Email : ' . $email);
-        
         return Command::SUCCESS;
     }
 }
